@@ -18,7 +18,6 @@
         musicBtn.classList.add('playing');
         musicPlaying = true;
       }).catch(function () {
-        // 微信等浏览器需要用户交互后才能播放
         musicBtn.textContent = '🔇';
         setTimeout(function () {
           musicBtn.textContent = '🎵';
@@ -34,27 +33,21 @@
   var btnLoading = submitBtn.querySelector('.btn-loading');
   var formSuccess = document.getElementById('form-success');
   var formError = document.getElementById('form-error');
+  var formErrorMsg = document.getElementById('form-error-msg');
   var formFields = form.querySelectorAll('.form-group, .submit-btn');
 
-  // Phone validation
   function isValidPhone(phone) {
     return /^1[3-9]\d{9}$/.test(phone);
   }
 
-  // Show error briefly
-  function showError() {
+  function showError(msg) {
+    formErrorMsg.textContent = msg || '提交失败，请稍后重试。如多次失败请联系群管理员。';
     formError.style.display = 'block';
     setTimeout(function () {
       formError.style.display = 'none';
-    }, 5000);
+    }, 8000);
   }
 
-  // Reset form
-  function resetForm() {
-    form.reset();
-  }
-
-  // Set loading state
   function setLoading(loading) {
     if (loading) {
       submitBtn.disabled = true;
@@ -70,11 +63,9 @@
   form.addEventListener('submit', function (e) {
     e.preventDefault();
 
-    // Hide previous messages
     formSuccess.style.display = 'none';
     formError.style.display = 'none';
 
-    // Get values
     var name = document.getElementById('name').value.trim();
     var building = document.getElementById('building').value.trim();
     var unit = document.getElementById('unit').value.trim();
@@ -82,31 +73,12 @@
     var phone = document.getElementById('phone').value.trim();
     var willingnessEl = document.querySelector('input[name="willingness"]:checked');
 
-    // Validate
-    if (!name) {
-      alert('请输入姓名');
-      return;
-    }
-    if (!unit) {
-      alert('请输入单元号');
-      return;
-    }
-    if (!room) {
-      alert('请输入门牌号');
-      return;
-    }
-    if (!phone) {
-      alert('请输入手机号码');
-      return;
-    }
-    if (!isValidPhone(phone)) {
-      alert('请输入正确的11位手机号码');
-      return;
-    }
-    if (!willingnessEl) {
-      alert('请选择您的参与意愿');
-      return;
-    }
+    if (!name) { alert('请输入姓名'); return; }
+    if (!unit) { alert('请输入单元号'); return; }
+    if (!room) { alert('请输入门牌号'); return; }
+    if (!phone) { alert('请输入手机号码'); return; }
+    if (!isValidPhone(phone)) { alert('请输入正确的11位手机号码'); return; }
+    if (!willingnessEl) { alert('请选择您的参与意愿'); return; }
 
     var willingness = willingnessEl.value;
     var willingnessLabel = willingnessEl.parentNode.querySelector('.radio-label').textContent.trim();
@@ -115,7 +87,6 @@
       ? buildingFull + '栋-' + unit + '单元-' + room
       : buildingFull + '-' + unit + '单元-' + room;
 
-    // Build payload
     var payload = {
       name: name,
       building: buildingFull,
@@ -128,7 +99,6 @@
       submittedAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
     };
 
-    // Submit
     setLoading(true);
 
     fetch('/api/submit', {
@@ -143,21 +113,17 @@
       })
       .then(function (result) {
         setLoading(false);
-
         if (result.ok && result.data.success) {
-          // Success
-          formFields.forEach(function (el) {
-            el.style.display = 'none';
-          });
+          formFields.forEach(function (el) { el.style.display = 'none'; });
           formSuccess.style.display = 'block';
           formSuccess.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
-          showError();
+          showError(result.data.message);
         }
       })
-      .catch(function () {
+      .catch(function (err) {
         setLoading(false);
-        showError();
+        showError('网络连接失败，请稍后重试');
       });
   });
 })();

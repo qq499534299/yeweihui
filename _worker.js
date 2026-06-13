@@ -100,18 +100,49 @@ async function handleAPI(request, env) {
           debug.token_step.success = true;
           debug.token_step.expire = tokenData.expire;
 
-          // Step 3: 测试表格访问
-          const tableResp = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${env.FEISHU_APP_TOKEN}/tables/${env.FEISHU_TABLE_ID}`, {
+          // Step 3: 列出表格
+          const listResp = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${env.FEISHU_APP_TOKEN}/tables`, {
             headers: { Authorization: `Bearer ${tokenData.tenant_access_token}` }
           });
-          debug.table_step = { http_status: tableResp.status };
-          const tableText = await tableResp.text();
+          debug.tables_step = { http_status: listResp.status };
+          const listText = await listResp.text();
           try {
-            const tableData = JSON.parse(tableText);
-            debug.table_step.code = tableData.code;
-            debug.table_step.msg = tableData.msg;
+            const listData = JSON.parse(listText);
+            debug.tables_step.code = listData.code;
+            debug.tables_step.msg = listData.msg;
+            if (listData.data && listData.data.items) {
+              debug.tables_step.tables = listData.data.items.map(function(t) { return t.name + ' (id=' + t.table_id + ')'; });
+            }
           } catch (e) {
-            debug.table_step.raw = tableText.substring(0, 300);
+            debug.tables_step.raw = listText.substring(0, 300);
+          }
+
+          // Step 4: 测试写入表格
+          const testFields = {};
+          testFields[FIELD_MAP.name] = 'DEBUG测试';
+          testFields[FIELD_MAP.building] = '测试';
+          testFields[FIELD_MAP.unit] = '测试';
+          testFields[FIELD_MAP.room] = '测试';
+          testFields[FIELD_MAP.address] = '测试';
+          testFields[FIELD_MAP.phone] = '13800000000';
+          testFields[FIELD_MAP.willingnessLabel] = '测试';
+          testFields[FIELD_MAP.submittedAt] = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+          const writeResp = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${env.FEISHU_APP_TOKEN}/tables/${env.FEISHU_TABLE_ID}/records`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${tokenData.tenant_access_token}`
+            },
+            body: JSON.stringify({ fields: testFields })
+          });
+          debug.write_step = { http_status: writeResp.status };
+          const writeText = await writeResp.text();
+          try {
+            const writeData = JSON.parse(writeText);
+            debug.write_step.code = writeData.code;
+            debug.write_step.msg = writeData.msg;
+          } catch (e) {
+            debug.write_step.raw = writeText.substring(0, 300);
           }
         }
       } catch (e) {

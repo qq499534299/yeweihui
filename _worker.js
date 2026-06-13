@@ -27,8 +27,12 @@ async function getAccessToken(env) {
     body: JSON.stringify({ app_id: env.FEISHU_APP_ID, app_secret: env.FEISHU_APP_SECRET })
   });
 
-  const data = await resp.json();
-  if (data.code !== 0) throw new Error('飞书token失败: ' + (data.msg || '未知错误'));
+  const text = await resp.text();
+  let data;
+  try { data = JSON.parse(text); } catch (e) {
+    throw new Error('飞书API返回非JSON (HTTP ' + resp.status + '): ' + text.substring(0, 200));
+  }
+  if (data.code !== 0) throw new Error('飞书token失败: code=' + data.code + ' msg=' + (data.msg || '未知'));
 
   cachedToken = data.tenant_access_token;
   tokenExpireAt = now + (data.expire - 300) * 1000;
